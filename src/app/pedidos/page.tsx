@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-// Tipos
+// Interfaces
 interface Articulo {
   codigo: string;
   codigoalterno?: string;
@@ -66,42 +66,61 @@ export default function SistemaPedidos() {
     }
   }
 
-// ... resto del código igual ...
-
-const buscarArticulo = async (e: React.FormEvent) => {
-  e.preventDefault()
-  try {
-    console.log('Buscando artículo con código:', codigo)
-    
-    const articulosRef = collection(db, 'articulos')
-    const q = query(articulosRef, where('codigo', '==', codigo.toString()))
-    const querySnapshot = await getDocs(q)
-    
-    if (!querySnapshot.empty) {
-      const articulo = querySnapshot.docs[0].data() as Articulo
-      setArticuloActual(articulo)  // 👈 Cambiado aquí
-    } else {
-      const qNum = query(articulosRef, where('codigo', '==', parseInt(codigo)))
-      const querySnapshotNum = await getDocs(qNum)
+  const buscarArticulo = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      console.log('Buscando artículo con código:', codigo)
       
-      if (!querySnapshotNum.empty) {
-        const articulo = querySnapshotNum.docs[0].data() as Articulo
-        setArticuloActual(articulo)  // 👈 Y aquí
+      const articulosRef = collection(db, 'articulos')
+      const q = query(articulosRef, where('codigo', '==', codigo.toString()))
+      const querySnapshot = await getDocs(q)
+      
+      if (!querySnapshot.empty) {
+        const articulo = querySnapshot.docs[0].data() as Articulo
+        setArticuloActual(articulo)
       } else {
-        console.log('No se encontró el artículo')
-        alert("Artículo no encontrado")
+        const qNum = query(articulosRef, where('codigo', '==', parseInt(codigo)))
+        const querySnapshotNum = await getDocs(qNum)
+        
+        if (!querySnapshotNum.empty) {
+          const articulo = querySnapshotNum.docs[0].data() as Articulo
+          setArticuloActual(articulo)
+        } else {
+          console.log('No se encontró el artículo')
+          alert("Artículo no encontrado")
+        }
       }
+    } catch (error) {
+      console.error('Error al buscar artículo:', error)
+      alert("Error al buscar artículo")
     }
-  } catch (error) {
-    console.error('Error al buscar artículo:', error)
-    alert("Error al buscar artículo")
   }
-}
 
-// ... resto del código igual ...
-
-
-
+  const agregarAlPedido = async () => {
+    if (articuloActual && empleadoSeleccionado && pedidoActualId) {
+      try {
+        const nuevoItem: PedidoItem = {
+          ...articuloActual,
+          empleado: empleadoSeleccionado,
+          fechaAgregado: new Date()
+        }
+        
+        const pedidoRef = doc(db, 'pedidos', pedidoActualId)
+        await updateDoc(pedidoRef, {
+          items: [...pedidoActual, nuevoItem]
+        })
+        
+        setPedidoActual([...pedidoActual, nuevoItem])
+        setArticuloActual(null)
+        setCodigo("")
+      } catch (error) {
+        console.error('Error al agregar al pedido:', error)
+        alert("Error al agregar el artículo al pedido")
+      }
+    } else if (!empleadoSeleccionado) {
+      alert("Por favor, selecciona un empleado antes de agregar artículos.")
+    }
+  }
 
   return (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
