@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, User, Package, ShoppingCart } from 'lucide-react'
+import { Plus, Search, User, Package } from 'lucide-react'
 import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import Image from 'next/image'
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,14 +11,29 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+// Tipos
+interface Articulo {
+  codigo: string;
+  codigoalterno?: string;
+  descripcion: string;
+  medida?: string;
+  minimo?: number;
+  empleado?: string;
+}
+
+interface PedidoItem extends Articulo {
+  empleado: string;
+  fechaAgregado: Date;
+}
+
 const empleados = ["Dario", "Victor", "Emilio", "Alan"]
 
 export default function SistemaPedidos() {
   const [codigo, setCodigo] = useState("")
-  const [articuloActual, setArticuloActual] = useState(null)
-  const [pedidoActual, setPedidoActual] = useState([])
+  const [articuloActual, setArticuloActual] = useState<Articulo | null>(null)
+  const [pedidoActual, setPedidoActual] = useState<PedidoItem[]>([])
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState("")
-  const [pedidoActualId, setPedidoActualId] = useState(null)
+  const [pedidoActualId, setPedidoActualId] = useState<string | null>(null)
 
   useEffect(() => {
     cargarPedidoActual()
@@ -52,7 +66,7 @@ export default function SistemaPedidos() {
     }
   }
 
-  const buscarArticulo = async (e) => {
+  const buscarArticulo = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       console.log('Buscando artículo con código:', codigo)
@@ -62,16 +76,14 @@ export default function SistemaPedidos() {
       const querySnapshot = await getDocs(q)
       
       if (!querySnapshot.empty) {
-        const articulo = querySnapshot.docs[0].data()
-        console.log('Artículo encontrado:', articulo)
+        const articulo = querySnapshot.docs[0].data() as Articulo
         setArticuloActual({ codigo, ...articulo })
       } else {
         const qNum = query(articulosRef, where('codigo', '==', parseInt(codigo)))
         const querySnapshotNum = await getDocs(qNum)
         
         if (!querySnapshotNum.empty) {
-          const articulo = querySnapshotNum.docs[0].data()
-          console.log('Artículo encontrado (número):', articulo)
+          const articulo = querySnapshotNum.docs[0].data() as Articulo
           setArticuloActual({ codigo, ...articulo })
         } else {
           console.log('No se encontró el artículo')
@@ -87,7 +99,7 @@ export default function SistemaPedidos() {
   const agregarAlPedido = async () => {
     if (articuloActual && empleadoSeleccionado && pedidoActualId) {
       try {
-        const nuevoItem = {
+        const nuevoItem: PedidoItem = {
           ...articuloActual,
           empleado: empleadoSeleccionado,
           fechaAgregado: new Date()
@@ -113,13 +125,6 @@ export default function SistemaPedidos() {
   return (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
       <div className="mb-8 text-center">
-        <Image
-          src="/logo.jpg"
-          alt="MEGYS Ferretería Logo"
-          width={200}
-          height={67}
-          className="mx-auto mb-4"
-        />
         <h1 className="text-3xl font-bold text-gray-800">Sistema de Pedidos</h1>
       </div>
 
@@ -140,7 +145,12 @@ export default function SistemaPedidos() {
                 placeholder="Código del artículo"
                 className="flex-grow"
               />
-              <Button type="submit" className="bg-yellow-400 text-black hover:bg-yellow-500">Buscar</Button>
+              <Button 
+                type="submit" 
+                className="bg-yellow-400 text-black hover:bg-yellow-500"
+              >
+                Buscar
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -179,7 +189,6 @@ export default function SistemaPedidos() {
         <CardContent className="pt-6">
           {articuloActual && (
             <div className="mb-6 bg-yellow-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold mb-2 text-gray-800">Artículo Encontrado</h3>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -199,7 +208,11 @@ export default function SistemaPedidos() {
                     <TableCell>{articuloActual.medida}</TableCell>
                     <TableCell>{articuloActual.minimo}</TableCell>
                     <TableCell>
-                      <Button onClick={agregarAlPedido} size="sm" className="bg-green-500 hover:bg-green-600 text-white">
+                      <Button 
+                        onClick={agregarAlPedido} 
+                        size="sm" 
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         Agregar
                       </Button>
@@ -212,7 +225,6 @@ export default function SistemaPedidos() {
 
           {pedidoActual.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold mb-2 text-gray-800">Artículos en el Pedido Actual</h3>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -242,7 +254,7 @@ export default function SistemaPedidos() {
 
           {pedidoActual.length === 0 && !articuloActual && (
             <div className="text-center text-gray-500 py-8">
-              <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+              <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
               <p>No hay artículos en el pedido actual. Busca y agrega artículos para comenzar.</p>
             </div>
           )}
